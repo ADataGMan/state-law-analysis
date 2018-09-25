@@ -85,6 +85,8 @@ if __name__ == '__main__':
         p = pool.Pool(cores)
 
         p.map(raw_retrieval, arl)
+        p.close()
+        p.join()
 
         # for rurl in arl:
         #     raw_retrieval(rurl)
