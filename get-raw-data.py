@@ -5,8 +5,8 @@ import datetime
 import time
 from urllib.parse import urljoin
 
-#from multiprocessing import pool
-#import multiprocessing
+from multiprocessing import pool
+import multiprocessing
 
 version_date_time = datetime.datetime.now()
 
@@ -15,7 +15,8 @@ dbcollection = dbclient['legal_raw']
 
 retrieved_url_list = list()
 awaiting_retrieval_list = list()
-functional_delay = 1
+
+
 
 state_abbreviation_code = 'nh'
 
@@ -23,6 +24,10 @@ nh_top_level_url = 'http://www.gencourt.state.nh.us/rsa/html/nhtoc.htm'
 nh_root = 'http://www.gencourt.state.nh.us/rsa/html/'
 
 # check for root to avoid escaping site boundaries
+
+functional_delay = 1
+cores = multiprocessing.cpu_count()
+
 
 def raw_retrieval(request_url):
 
@@ -72,12 +77,14 @@ def raw_retrieval(request_url):
 
 awaiting_retrieval_list.append(nh_top_level_url)
 
-while awaiting_retrieval_list:
-    arl = awaiting_retrieval_list.copy()
+if __name__ == '__main__':
 
-    #p = pool.Pool(1)
+    while awaiting_retrieval_list:
+        arl = awaiting_retrieval_list.copy()
 
-    #p.map(raw_retrieval, arl)
+        p = pool.Pool(cores)
 
-    for rurl in arl:
-        raw_retrieval(rurl)
+        p.map(raw_retrieval, arl)
+
+        # for rurl in arl:
+        #     raw_retrieval(rurl)
