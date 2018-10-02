@@ -1,47 +1,75 @@
+
+################## Libraries ##################
 import requests
 import bs4
 import pymongo
 import datetime
 import time
-from urllib.parse import urljoin
-
-from multiprocessing import pool
+import urllib.parse
 import multiprocessing
+from multiprocessing import pool
 
-version_date_time = datetime.datetime.now()
+################## DB Config ##################
+db_client = pymongo.mongo_client.MongoClient('mongodb://localhost:27017')
+db_retrieval = db_client['retrieval']
+db_awaiting_retrieval = db_retrieval["awaiting_retrieval"]
+db_retrieved = db_retrieval["retrieved"]
 
-dbclient = pymongo.mongo_client.MongoClient('mongodb://localhost:27017')
-dbcollection = dbclient['legal_raw']
-
+################## Misc ##################
 retrieved_url_list = list()
 awaiting_retrieval_list = list()
-
-
 
 state_abbreviation_code = 'nh'
 
 nh_top_level_url = 'http://www.gencourt.state.nh.us/rsa/html/nhtoc.htm'
-nh_root = 'http://www.gencourt.state.nh.us/rsa/html/'
+
+################## Startup Operations ##################
+version_date_time = datetime.datetime.now()
+url_root = urllib.parse.urlparse(nh_top_level_url).hostname
+cores = 1 #multiprocessing.cpu_count()
 
 # check for root to avoid escaping site boundaries
-
-functional_delay = 1
-cores = multiprocessing.cpu_count()
+# set up storage for lists
 
 
-def raw_retrieval(request_url):
 
-    if request_url not in retrieved_url_list:
+
+
+def get_request(url,retries=0, recover_seconds=3):
+    try:
+        content = requests.get(url)
+        return content
+    except:
+        if retries >= 3:
+            return
+        else:
+            time.sleep(recover_seconds)
+            get_request(url, retries + 1, recover_seconds * 2)
+
+
+def raw_retrieval(request_url, root_url = None, functional_delay = 3):
+
+    if not root_url:
+        url_root = urllib.parse.urlparse(request_url).hostname
+
+    if request_url not in retrieved_url_list and \
+        urllib.parse.urlparse(request_url).hostname == url_root:
+
         time.sleep(functional_delay)
 
         raw_content = None
 
         request_start_date_time = datetime.datetime.now()
-        raw_content = requests.get(request_url)
+        raw_content = get_request(request_url)
         request_end_date_time = datetime.datetime.now()
 
-        retrieved_url_list.append(request_url)
-        awaiting_retrieval_list.remove(request_url)
+        if not raw_content: return
+
+        db_retrieved.insert_one({"url":request_url})
+        db_awaiting_retrieval.remove({"url":request_url})
+
+        # retrieved_url_list.append(request_url)
+        # awaiting_retrieval_list.remove(request_url)
 
         status_code = raw_content.status_code
         status_reason = raw_content.reason
@@ -56,9 +84,10 @@ def raw_retrieval(request_url):
             for link in soup.find_all('a'):
                 hrf = link.get('href')
 
-                link_url = urljoin(request_url,hrf)
+                link_url = urllib.parse.urljoin(request_url,hrf)
                 next_link_list.append(link_url)
-                awaiting_retrieval_list.append(link_url)
+                db_awaiting_retrieval.insert_one({"url":link_url})
+                # awaiting_retrieval_list.append(link_url)
         
         record = {
             "version_date_time":version_date_time,
@@ -72,7 +101,7 @@ def raw_retrieval(request_url):
             "content":content
         }
 
-        dbc = dbcollection[state_abbreviation_code]
+        dbc = db_retrieval[state_abbreviation_code]
         dbc.insert_one(record)
 
 awaiting_retrieval_list.append(nh_top_level_url)
