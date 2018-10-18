@@ -12,8 +12,9 @@ from multiprocessing import pool
 ################## Misc ##################
 cores = multiprocessing.cpu_count()
 
-run_date_time = datetime.datetime.now()
+config_request_delay = 3
 
+run_date_time = datetime.datetime.now()
 
 ################## DB Config ##################
 database_url = 'mongodb://localhost:27017'
@@ -32,7 +33,10 @@ def get_request_content(url, state_code, retries=0, request_delay=3):
     try:
         time.sleep(request_delay)
         content = requests.get(url)
-        return content
+        result = None
+        if content:
+            result = {"content":content, "request_delay":request_delay}
+        return result
     except:
         if retries >= 3:
 
@@ -44,7 +48,7 @@ def get_request_content(url, state_code, retries=0, request_delay=3):
             )
             return
         else:
-            get_request_content(url, retries + 1, request_delay * 2)
+            get_request_content(url, state_code, retries + 1, request_delay * 2)
 
 def retrieve_data():
       
@@ -85,63 +89,69 @@ def retrieve_data():
                     ))
 
 def retrieve_binary(request_url, root_url, request_state_code):
-    
+
+    request_root = urllib.parse.urlparse(request_url).hostname
     state_db = database[request_state_code]
+
     retrieved_list = list(map(
         lambda x:x['url']
         ,retrieved_collection.find({},{'url':1,'_id':0})
         ))
     
-    if (request_url in retrieved_list) \
-        and (urllib.parse.urlparse(request_url).hostname == root_url):
+    if (request_url not in retrieved_list) \
+        and (request_root == root_url):
 
         raw_content = None
-
         request_start_date_time = datetime.datetime.now()
-        raw_content = get_request_content(request_url, request_state_code)
+        raw_content = get_request_content(
+            request_url
+            ,request_state_code
+            ,config_request_delay
+            )
         request_end_date_time = datetime.datetime.now()
     
-        if not raw_content: return
+        if raw_content:
+            status_code = raw_content['content'].status_code
+            status_reason = raw_content['content'].reason
 
-        status_code = raw_content.status_code
-        status_reason = raw_content.reason
+            content = None
 
-        content = None
+            if status_code == 200:
+                content = raw_content['content'].content
+                htmlparser = bs4.BeautifulSoup(content,'html.parser')
+                link_url = None
+                next_link_list = list()
+                for link in htmlparser.find_all('a'):
+                    hrf = link.get('href')
 
-        if status_code == 200:
-            content = raw_content.content
-            htmlparser = bs4.BeautifulSoup(content,'html.parser')
-            link_url = None
-            next_link_list = list()
-            for link in htmlparser.find_all('a'):
-                hrf = link.get('href')
+                    link_url = urllib.parse.urljoin(request_url,hrf)
+                    next_link_list.append(link_url)
+                    awaiting_retrieval_collection.insert_one(
+                        {"url":link_url
+                        ,'state_code':request_state_code}
+                        )
+            
+            record = {
+                "version_date_time":run_date_time,
+                "state_code":request_state_code,
+                "request_url":request_url,
+                "request_start_date_time":request_start_date_time,
+                "request_end_date_time":request_end_date_time,
+                "request_delay_seconds":raw_content['request_delay'],
+                "status_code":status_code,
+                "status_reason":status_reason,
+                "next_link_list":next_link_list,
+                "content":content
+            }
 
-                link_url = urllib.parse.urljoin(request_url,hrf)
-                next_link_list.append(link_url)
-                awaiting_retrieval_collection.insert_one(
-                    {"url":link_url
-                    ,'state_code':request_state_code}
-                    )
-        
-        record = {
-            "version_date_time":run_date_time,
-            "state_code":request_state_code,
-            "request_url":request_url,
-            "request_start_date_time":request_start_date_time,
-            "request_end_date_time":request_end_date_time,
-            "status_code":status_code,
-            "status_reason":status_reason,
-            "next_link_list":next_link_list,
-            "content":content
-        }
+            state_db.insert_one(record)
+            retrieved_collection.insert_one(
+                {'url':request_url
+                ,'state_code':request_state_code}
+            )
 
-        state_db.insert_one(record)
-        retrieved_collection.insert_one(
-            {'url':request_url
-            ,'state_code':request_state_code}
-        )
-        awaiting_retrieval_collection.remove(
-            {"url":request_url}
-        )
+    awaiting_retrieval_collection.remove(
+        {"url":request_url}
+    )
 
 retrieve_data()
