@@ -155,3 +155,5 @@ def retrieve_binary(request_url, root_url, request_state_code):
     )
 
 retrieve_data()
+
+db_client.close()
