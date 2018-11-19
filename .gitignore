@@ -1,5 +1,5 @@
 .vscode/
 __pycache__/
+data/
 *.ps1
 scratchpad*
-data/

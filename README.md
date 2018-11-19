@@ -22,5 +22,12 @@ When there are repealed laws which do not have their own page
 but are only acknowledged on a higher level summary page,
 these will be ignored.
 
-Only content which appears on the individual law page will be
-parsed and tokenized.
+Only content which appears on the page that describes a single
+section will be parsed and tokenized.
+
+### Improvement Opportunities
+
+Rather than utitilizing the metadata tags for each section,
+the body of the page should be scraped and parsed to create
+better coverage. This would improve capture of content and
+resolve gaps identified by [Covered Content](#Covered-Content).
