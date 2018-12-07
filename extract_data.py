@@ -7,10 +7,12 @@ from dateutil import parser as Date_Parser
 
 from Utility.Utility_Functions import StringUtility
 
+from pprint import pprint
+
 test = {'request_url':
-'http://www.gencourt.state.nh.us/rsa/html/I/3-B/3-B-1.htm' #normal
+# 'http://www.gencourt.state.nh.us/rsa/html/I/3-B/3-B-1.htm' #normal
 # 'http://www.gencourt.state.nh.us/rsa/html/II/30/30-5.htm' #repealed
-# 'http://www.gencourt.state.nh.us/rsa/html/I/6-B/6-B-4.htm' #complex content
+'http://www.gencourt.state.nh.us/rsa/html/I/6-B/6-B-4.htm' #complex content
 # 'http://www.gencourt.state.nh.us/rsa/html/nhtoc.htm' #table of contents
 # 'http://www.gencourt.state.nh.us/rsa/html/NHTOC/NHTOC-I.htm' #table of contents Title 1
 # 'http://www.gencourt.state.nh.us/rsa/html/NHTOC/NHTOC-I-1.htm' #table of contents title 1 chapter 1
@@ -57,7 +59,7 @@ def parse_record(binary_record):
         elif tag_name == 'codesect':
             extract_codesect_metadata(tag)
 
-    print(new_record)
+    print(new_record['law_content'])
 
 def extract_title_metadata(tag):
     tag_content = tag['content']
@@ -155,6 +157,7 @@ def extract_sourcenote_metadata(tag):
     source_date_text = re.search(
         'eff.(.+)\\W\\D'
         ,tag_content
+        ,re.IGNORECASE
     ).group(1).strip()
 
     source_date = Date_Parser.parse(source_date_text)
@@ -169,11 +172,20 @@ def extract_sourcenote_metadata(tag):
 def extract_codesect_metadata(tag):
     tag_content = tag['content']
 
+    break_regex = '<.*?br.*?>'
+
     if not tag_content.lower().find('repealed') == -1:
         extract_sourcenote_metadata(tag)
 
+    content = tag_content
+    if re.search(break_regex, tag_content, re.IGNORECASE):
+        content = re.sub(break_regex, '\n', tag_content, flags=re.IGNORECASE)
+    
+    content = content.strip()
+    
     new_record.update({
-        "law_content":tag_content
+        "law_content_raw":tag_content,
+        "law_content": content
     })
 
 def insert_record(state_code):
