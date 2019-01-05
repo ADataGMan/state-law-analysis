@@ -12,7 +12,8 @@ from pprint import pprint
 test = {'request_url':
 # 'http://www.gencourt.state.nh.us/rsa/html/I/3-B/3-B-1.htm' #normal
 # 'http://www.gencourt.state.nh.us/rsa/html/II/30/30-5.htm' #repealed
-'http://www.gencourt.state.nh.us/rsa/html/I/6-B/6-B-4.htm' #complex content
+# 'http://www.gencourt.state.nh.us/rsa/html/I/6-B/6-B-4.htm' #complex content
+'http://www.gencourt.state.nh.us/rsa/html/I/6/6-8.htm' # more complex
 # 'http://www.gencourt.state.nh.us/rsa/html/nhtoc.htm' #table of contents
 # 'http://www.gencourt.state.nh.us/rsa/html/NHTOC/NHTOC-I.htm' #table of contents Title 1
 # 'http://www.gencourt.state.nh.us/rsa/html/NHTOC/NHTOC-I-1.htm' #table of contents title 1 chapter 1
@@ -28,6 +29,7 @@ state_collection =retrieval_db['state_top_level_url']
 new_record = dict()
 
 def extract_record():
+    import bs4
     for state in state_collection.find({}, {'_id':0,'url':0}):
         state_code = state['state_code']
         retrieval_state = retrieval_db[state_code]
@@ -37,6 +39,14 @@ def extract_record():
             insert_record(state_code)
 
 def parse_record(binary_record):
+    import bs4
+
+    if binary_record is None:
+        return None # Insert record into failed record dataset.
+
+    # print(binary_record['content'])
+    if binary_record.get('content') is None:
+        return None # Insert record into skipped record dataset.
 
     document = bs4.BeautifulSoup(
         binary_record['content']
@@ -59,7 +69,8 @@ def parse_record(binary_record):
         elif tag_name == 'codesect':
             extract_codesect_metadata(tag)
 
-    print(new_record['law_content'])
+    # print(new_record['law_content'])
+    print(new_record)
 
 def extract_title_metadata(tag):
     tag_content = tag['content']
@@ -178,6 +189,7 @@ def extract_codesect_metadata(tag):
         extract_sourcenote_metadata(tag)
 
     content = tag_content
+
     if re.search(break_regex, tag_content, re.IGNORECASE):
         content = re.sub(break_regex, '\n', tag_content, flags=re.IGNORECASE)
     
