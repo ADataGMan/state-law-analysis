@@ -17,6 +17,7 @@ test = {'request_url':
 # 'http://www.gencourt.state.nh.us/rsa/html/nhtoc.htm' #table of contents
 # 'http://www.gencourt.state.nh.us/rsa/html/NHTOC/NHTOC-I.htm' #table of contents Title 1
 # 'http://www.gencourt.state.nh.us/rsa/html/NHTOC/NHTOC-I-1.htm' #table of contents title 1 chapter 1
+# 'http://www.gencourt.state.nh.us/rsa/html/I/4/4-23.htm' # source that is old as fuck
 }
 
 database_url = 'mongodb://localhost:27017'
@@ -29,14 +30,16 @@ state_collection =retrieval_db['state_top_level_url']
 new_record = dict()
 
 def extract_record():
-    import bs4
+    # import bs4
+    # Retrieve all records in the state collection
+    # and don't return _id or url
     for state in state_collection.find({}, {'_id':0,'url':0}):
         state_code = state['state_code']
         retrieval_state = retrieval_db[state_code]
 
         for binary_record in retrieval_state.find(test):
             parse_record(binary_record)
-            insert_record(state_code)
+            # insert_record(state_code)
 
 def parse_record(binary_record):
     import bs4
@@ -65,12 +68,13 @@ def parse_record(binary_record):
         elif tag_name == 'sectiontitle':
             extract_sectiontitle_metadata(tag)
         elif tag_name == 'sourcenote':
+            # print(tag)
             extract_sourcenote_metadata(tag)
         elif tag_name == 'codesect':
             extract_codesect_metadata(tag)
 
     # print(new_record['law_content'])
-    print(new_record)
+    # print(new_record)
 
 def extract_title_metadata(tag):
     tag_content = tag['content']
@@ -150,6 +154,10 @@ def extract_sectiontitle_metadata(tag):
 
 def extract_sourcenote_metadata(tag):
     tag_content = tag['content']
+
+    print(type(tag_content))
+    print(tag_content)
+
 
     source_type = 'Source'
 

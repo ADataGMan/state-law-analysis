@@ -44,3 +44,24 @@ class StringUtility:
         title_number_text = str(major_title)+'.'+str(minor_title)
 
         return float(title_number_text)
+
+    @staticmethod
+    def month_replace_period(string_input):
+        # Move to top level or create own class
+        month_replace = [
+            ('Jan.', 'Jan'),
+            ('Feb.', 'Feb'),
+            ('Mar.', 'Mar'),
+            ('Apr.', 'Apr'),
+            ('Aug.', 'Aug'),
+            ('Sep.', 'Sep'),
+            ('Oct.', 'Oct'),
+            ('Nov.', 'Nov'),
+            ('Dec.', 'Dec'),
+            ('Sept.', 'Sept')
+        ]
+        _string_input = string_input
+        
+        for k, v in month_replace:
+            _string_input = _string_input.replace(k,v)
+        return _string_input
