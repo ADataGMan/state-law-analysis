@@ -3,5 +3,5 @@
 old
 __pycache__/
 data/
-*.ps1
+*ipynb
 scratchpad*

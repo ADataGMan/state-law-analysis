@@ -21,14 +21,15 @@ class MongoHelper:
 
     def connect_to_many(self,db_names):
         for db_name in db_names:
-            db_client = self.connect_to_one(db_name)
-            self.db_names_dict[db_name] = db_client
+            # db_client = self.connect_to_one(db_name)
+            # self.db_names_dict[db_name] = db_client
+            pass
     def retrieve_collection(self):
         pass
 
 import config_params
 
-m = MongoHelper(config_params.db_collection)
+# m = MongoHelper(config_params.db_collection)
 
 # first thing is to get db_names 
 # db_names = ['test','test2','test3']
