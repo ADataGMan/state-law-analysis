@@ -1,5 +1,5 @@
 mongo_config = {
-    "mongo_url":"mongodb://localhost:27017"
+    "host":"mongodb://localhost:27017"
 }
 
 db_collection = {"extract_db":
